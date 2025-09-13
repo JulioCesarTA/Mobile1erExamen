@@ -1,3 +1,4 @@
+// lib/widgets/custom_text_field.dart
 import 'package:flutter/material.dart';
 
 class CustomTextField extends StatelessWidget {
@@ -17,9 +18,10 @@ class CustomTextField extends StatelessWidget {
     return TextField(
       controller: controller,
       obscureText: obscure,
+      keyboardType: obscure ? TextInputType.text : TextInputType.emailAddress,
       decoration: InputDecoration(
         labelText: hint,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        border: const OutlineInputBorder(),
       ),
     );
   }
