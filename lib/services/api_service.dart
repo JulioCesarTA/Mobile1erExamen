@@ -9,7 +9,7 @@ class ApiService {
   // Para iOS Simulator suele ser http://127.0.0.1:8000
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8000',
+    defaultValue: 'https://backend-parcialsi2-production.up.railway.app',
   );
 
   static const _storage = FlutterSecureStorage();
@@ -17,7 +17,10 @@ class ApiService {
   // -------------------------
   // Auth
   // -------------------------
-  static Future<Map<String, dynamic>> login(String email, String password) async {
+  static Future<Map<String, dynamic>> login(
+    String email,
+    String password,
+  ) async {
     final uri = Uri.parse('$baseUrl/api/login/');
 
     final resp = await http.post(
@@ -38,10 +41,23 @@ class ApiService {
       // Guardamos tokens + datos útiles del usuario
       await _storage.write(key: 'access', value: access);
       await _storage.write(key: 'refresh', value: refresh);
+      await _storage.write(
+        key: 'user_id',
+        value: (data['id'] ?? '').toString(),
+      );
 
-      await _storage.write(key: 'email', value: (data['email'] ?? '').toString());
-      await _storage.write(key: 'first_name', value: (data['first_name'] ?? '').toString());
-      await _storage.write(key: 'last_name', value: (data['last_name'] ?? '').toString());
+      await _storage.write(
+        key: 'email',
+        value: (data['email'] ?? '').toString(),
+      );
+      await _storage.write(
+        key: 'first_name',
+        value: (data['first_name'] ?? '').toString(),
+      );
+      await _storage.write(
+        key: 'last_name',
+        value: (data['last_name'] ?? '').toString(),
+      );
       await _storage.write(key: 'role', value: (data['role'] ?? '').toString());
       await _storage.write(
         key: 'extra_permissions',
@@ -101,51 +117,62 @@ class ApiService {
   static Future<http.Response> get(String path) async {
     final access = await _storage.read(key: 'access');
     final uri = Uri.parse('$baseUrl$path');
-    return http.get(uri, headers: {
-      'Authorization': 'Bearer $access',
-      'Content-Type': 'application/json',
-    });
+    return http.get(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $access',
+        'Content-Type': 'application/json',
+      },
+    );
   }
 
-  static Future<http.Response> post(String path, Map<String, dynamic> body) async {
+  static Future<http.Response> post(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
     final access = await _storage.read(key: 'access');
     final uri = Uri.parse('$baseUrl$path');
-    return http.post(uri,
-        headers: {
-          'Authorization': 'Bearer $access',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(body));
+    return http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $access',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
   }
 
   // --- agrega dentro de ApiService ---
 
-static Future<Map<String, String>> _authHeaders() async {
-  final access = await _storage.read(key: 'access');
-  return {
-    'Authorization': 'Bearer $access',
-    'Content-Type': 'application/json',
-  };
+  static Future<Map<String, String>> _authHeaders() async {
+    final access = await _storage.read(key: 'access');
+    return {
+      'Authorization': 'Bearer $access',
+      'Content-Type': 'application/json',
+    };
+  }
+
+  static Future<http.Response> put(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl$path');
+    return http.put(uri, headers: headers, body: jsonEncode(body));
+  }
+
+  static Future<http.Response> patch(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl$path');
+    return http.patch(uri, headers: headers, body: jsonEncode(body));
+  }
+
+  static Future<http.Response> delete(String path) async {
+    final headers = await _authHeaders();
+    final uri = Uri.parse('$baseUrl$path');
+    return http.delete(uri, headers: headers);
+  }
 }
-
-static Future<http.Response> put(String path, Map<String, dynamic> body) async {
-  final headers = await _authHeaders();
-  final uri = Uri.parse('$baseUrl$path');
-  return http.put(uri, headers: headers, body: jsonEncode(body));
-}
-
-static Future<http.Response> patch(String path, Map<String, dynamic> body) async {
-  final headers = await _authHeaders();
-  final uri = Uri.parse('$baseUrl$path');
-  return http.patch(uri, headers: headers, body: jsonEncode(body));
-}
-
-static Future<http.Response> delete(String path) async {
-  final headers = await _authHeaders();
-  final uri = Uri.parse('$baseUrl$path');
-  return http.delete(uri, headers: headers);
-}
-
-}
-
-

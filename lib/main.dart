@@ -1,60 +1,67 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
-import 'screens/login_screen.dart';
-import 'screens/dashboard_screen.dart';
+import 'core/theme.dart';
 import 'services/api_service.dart';
+import 'screens/auth/login_screen.dart';
+import 'screens/home/home_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const SmartCondominiumApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SmartCondominiumApp extends StatelessWidget {
+  const SmartCondominiumApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Smart Condominium',
       debugShowCheckedModeBanner: false,
-      title: 'Auth App',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      // En vez de initialRoute, usamos un widget que decide
-      home: const _AuthGate(),
-      routes: {
-        "/login": (_) => const LoginScreen(),
-        "/dashboard": (_) => const DashboardScreen(),
+      theme: buildAppTheme(), // 👈 usa tu theme central
+      builder: (context, child) {
+        final media = MediaQuery.of(context);
+        // Evita letras gigantes por accesibilidad del sistema
+        return MediaQuery(
+          data: media.copyWith(
+            textScaleFactor: media.textScaleFactor.clamp(0.85, 1.15),
+          ),
+          child: child!,
+        );
       },
+      home: const _Gate(),
     );
   }
 }
 
-class _AuthGate extends StatefulWidget {
-  const _AuthGate();
-
+class _Gate extends StatefulWidget {
+  const _Gate({super.key});
   @override
-  State<_AuthGate> createState() => _AuthGateState();
+  State<_Gate> createState() => _GateState();
 }
 
-class _AuthGateState extends State<_AuthGate> {
+class _GateState extends State<_Gate> {
+  late Future<bool> _future;
+
   @override
   void initState() {
     super.initState();
-    _decide();
-  }
-
-  Future<void> _decide() async {
-    final logged = await ApiService.isLoggedIn();
-    if (!mounted) return;
-    if (logged) {
-      Navigator.pushReplacementNamed(context, '/dashboard');
-    } else {
-      Navigator.pushReplacementNamed(context, '/login');
-    }
+    _future = ApiService.isLoggedIn();
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+    return FutureBuilder<bool>(
+      future: _future,
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final logged = snap.data ?? false;
+        return logged ? const HomeScreen() : const LoginScreen();
+      },
     );
   }
 }
