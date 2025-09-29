@@ -16,6 +16,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selected = 0;
+  Map<String, dynamic>? _user;
 
   void _onSelectTab(int i) => setState(() => _selected = i);
 
@@ -26,6 +27,17 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final user = await ApiService.getCurrentUser();
+    setState(() => _user = user);
   }
 
   @override
@@ -50,11 +62,56 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Text(titles[_selected]),
         actions: [
           PopupMenuButton<String>(
+            icon: const CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Icon(Icons.person, color: Colors.blue),
+            ),
             onSelected: (v) {
               if (v == 'logout') _logout();
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'logout', child: Text('Cerrar sesión')),
+            itemBuilder: (context) => [
+              if (_user != null) ...[
+                PopupMenuItem(
+                  enabled: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "${_user!['first_name']} ${_user!['last_name']}",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        _user!['role'] ?? 'Sin rol',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      Text(
+                        _user!['email'] ?? '',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+              ],
+              const PopupMenuItem(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Cerrar sesión'),
+                  ],
+                ),
+              ),
             ],
           ),
         ],

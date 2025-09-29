@@ -1,12 +1,17 @@
-// lib/main.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
+
 import 'core/theme.dart';
 import 'services/api_service.dart';
+import 'services/notification_service.dart';
+import 'services/notification_helper.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 1) Inicializar notificaciones locales (permisos + canal)
+  await initLocalNotifications();
   runApp(const SmartCondominiumApp());
 }
 
@@ -18,7 +23,7 @@ class SmartCondominiumApp extends StatelessWidget {
     return MaterialApp(
       title: 'Smart Condominium',
       debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(), // 👈 usa tu theme central
+      theme: buildAppTheme(), // 👈 tu theme central
       builder: (context, child) {
         final media = MediaQuery.of(context);
         // Evita letras gigantes por accesibilidad del sistema
@@ -42,11 +47,34 @@ class _Gate extends StatefulWidget {
 
 class _GateState extends State<_Gate> {
   late Future<bool> _future;
+  bool _notifiedOnce = false; // evita notificar múltiples veces al reconstruir
 
   @override
   void initState() {
     super.initState();
     _future = ApiService.isLoggedIn();
+  }
+
+  Future<void> _notifyUpcomingOnce() async {
+    if (_notifiedOnce) return;
+    _notifiedOnce = true;
+
+    try {
+      // Pide reservas próximas (48h). Ajusta si quieres otro horizonte.
+      final notifs = await NotificationService.listUpcoming(horas: 48);
+
+      // Muestra hasta 3 notificaciones para no “spamear”
+      for (final n in notifs.take(3)) {
+        await showReservationNotification(
+          id: n.id,
+          area: n.area,
+          fecha: n.fecha,
+          hora: n.horaInicio,
+        );
+      }
+    } catch (_) {
+      // Silenciar errores de red aquí para no romper el flujo de arranque.
+    }
   }
 
   @override
@@ -59,7 +87,17 @@ class _GateState extends State<_Gate> {
             body: Center(child: CircularProgressIndicator()),
           );
         }
+
         final logged = snap.data ?? false;
+
+        if (logged) {
+          // Disparamos la consulta y notificación una sola vez,
+          // después del primer frame (evita hacerlo dentro del build sincrónico).
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _notifyUpcomingOnce();
+          });
+        }
+
         return logged ? const HomeScreen() : const LoginScreen();
       },
     );

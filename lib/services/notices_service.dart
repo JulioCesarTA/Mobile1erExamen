@@ -1,30 +1,21 @@
-import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 import '../models/notice.dart';
-import 'api_service.dart';
+import './api_service.dart';
 
 class NoticesService {
+  /// Lista todas las noticias del condominio
   static Future<List<Notice>> listNotices() async {
-    // final resp = await ApiService.get('/api/notices/');
-    await Future.delayed(const Duration(milliseconds: 300));
-    return List.generate(
-      5,
-      (i) => Notice(
-        id: '$i',
-        title: 'Aviso importante #${i + 1}',
-        body: 'Reunión de copropietarios el viernes a las 19:00.',
-        createdAt: DateTime.now().subtract(Duration(days: i)),
-      ),
-    );
-  }
+    final http.Response resp = await ApiService.get('/api/notices/');
 
-  static Future<Notice> getNotice(String id) async {
-    // final resp = await ApiService.get('/api/notices/$id/');
-    await Future.delayed(const Duration(milliseconds: 200));
-    return Notice(
-      id: id,
-      title: 'Aviso $id',
-      body: 'Detalle del aviso $id',
-      createdAt: DateTime.now(),
-    );
+    if (resp.statusCode != 200) {
+      throw Exception('Error ${resp.statusCode}: ${resp.body}');
+    }
+
+    final List data = jsonDecode(resp.body) as List;
+    return data
+        .map<Notice>((j) => Notice.fromJson(j as Map<String, dynamic>))
+        .toList();
   }
 }
